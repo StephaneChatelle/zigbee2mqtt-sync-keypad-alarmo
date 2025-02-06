@@ -1,0 +1,355 @@
+# Automation Definition
+blueprint:
+  name: Keypads for Zigbee2MQTT
+  description: This Blueprint allows the synchronisation of an alarmo control panel
+    with a Zigbee2MQTT keypad Frient KEPZB-110. 
+    This means that the status of the alarm control panel is transmitted to the keypad and vice versa.
+  domain: automation
+  # Input value diplay on configuration
+  # -----------------------------------------------------------------------------------------------------------
+  input:
+    # Technical
+    z2m_keypad_path:
+      name: MQTT State Topic of your Zigbee2MQTT Keypad
+      description: 'The State Topic is composed of your Zigbee2MQTT base_topic (see
+        your Z2M Addon Configuration) and the Friendly Name of your keypad in Z2M.
+        Example: zigbee2mqtt/Keypad'
+    z2m_keypad_path_set:
+      name: MQTT Set Topic of your Zigbee2MQTT Keypad
+      description: 'This is the same as your State Topic, with the addition of /set.
+        Example: zigbee2mqtt/Keypad/set'
+    control_panel:
+      name: Alarmo Control Panel
+      description: 'An alarmo control panel. Example: https://github.com/nielsfaber/alarmo'
+      default: []
+      selector:
+        entity:
+          domain:
+          - alarm_control_panel
+          multiple: false
+# -----------------------------------------------------------------------------------------------------------
+# Trigger the automation
+trigger:
+# From the server to the keypad
+# -----------------------------------------------------------------------------------------------------------
+# Transitional state
+#
+# Arming states
+- platform: state
+  entity_id: !input control_panel
+  to: arming
+  id: panel_arming
+# Pending
+- platform: state
+  entity_id: !input control_panel
+  to: pending
+  id: panel_pending
+# Triggered
+- platform: state
+  entity_id: !input control_panel
+  to: triggered
+  id: panel_triggered
+# Alarm States
+#
+# Armed Away
+- platform: state
+  entity_id: !input control_panel
+  to: armed_away
+  id: panel_armed_away
+# Armed Home
+- platform: state
+  entity_id: !input control_panel
+  to: armed_home
+  id: panel_armed_home
+# Armed Night
+- platform: state
+  entity_id: !input control_panel
+  to: armed_night
+  id: panel_armed_night
+# Armed vacation
+- platform: state
+  entity_id: !input control_panel
+  to: armed_vacation
+  id: panel_armed_vacation
+# Disarmed
+- platform: state
+  entity_id: !input control_panel
+  to: disarmed
+  id: panel_disarmed
+#
+# Communication
+- platform: mqtt
+  topic: !input z2m_keypad_path
+  id: keypad_mqtt
+condition: []
+# Action to perform by automation
+action:
+- choose:
+  # From the server to the keypad
+  # ------------------------------------------------------------------------------------------------
+  # Arming State
+  #
+  - conditions:
+    - condition: trigger
+      id: panel_arming
+    sequence:
+    - choose:
+      # To Armed Away with exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_away
+          attribute: next_state
+        - condition: numeric_state
+          entity_id: !input control_panel
+          above: 0
+          attribute: delay
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"exit_delay\"\n  }\n}"
+      # To Armed Away without exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_away
+          attribute: next_state
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+      # To Armed Home with exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_home
+          attribute: next_state
+        - condition: numeric_state
+          entity_id: !input control_panel
+          above: 0
+          attribute: delay
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"exit_delay\"\n  }\n}"
+      # To Armed Home without exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_home
+          attribute: next_state
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+      # To Armed Night with exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_night
+          attribute: next_state
+        - condition: numeric_state
+          entity_id: !input control_panel
+          above: 0
+          attribute: delay
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"exit_delay\"\n  }\n}"
+      # To Armed Night without exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_night
+          attribute: next_state
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+      # To Armed Vacation with exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_vacation
+          attribute: next_state
+        - condition: numeric_state
+          entity_id: !input control_panel
+          above: 0
+          attribute: delay
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"exit_delay\"\n  }\n}"
+      # To Armed Vacation without exit delay
+      - conditions:
+        - condition: state
+          entity_id: !input control_panel
+          state: armed_vacation
+          attribute: next_state
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+      default: []
+  # Status
+  #
+  # Arming Away
+  - conditions:
+    - condition: trigger
+      id: panel_armed_away
+    sequence:
+    - service: mqtt.publish
+      data:
+        topic: !input z2m_keypad_path_set
+        payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+  # Arming home
+  - conditions:
+    - condition: trigger
+      id: panel_armed_home
+    sequence:
+    - service: mqtt.publish
+      data:
+        topic: !input z2m_keypad_path_set
+        payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+  # Arming night
+  - conditions:
+    - condition: trigger
+      id: panel_armed_night
+    sequence:
+    - service: mqtt.publish
+      data:
+        topic: !input z2m_keypad_path_set
+        payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+  # Arming vacation
+  - conditions:
+    - condition: trigger
+      id: panel_armed_vacation
+    sequence:
+    - service: mqtt.publish
+      data:
+        topic: !input z2m_keypad_path_set
+        payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"arm_all_zones\"\n  }\n}"
+  # Disarm
+  - conditions:
+    - condition: trigger
+      id: panel_disarmed
+    sequence:
+    - service: mqtt.publish
+      data:
+        topic: !input z2m_keypad_path_set
+        payload: "{\n \"arm_mode\": \n  {\n    \"mode\": \"disarm\"\n  }\n}"
+  #
+  # Pending State (arming delay)
+  - conditions:
+    - condition: trigger
+      id: panel_pending
+    sequence:
+    - choose:
+      # With entry delay (always the case)
+      - conditions:
+        - condition: numeric_state
+          entity_id: !input control_panel
+          above: 0
+          attribute: delay
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"entry_delay\"\n  }\n}"
+      # Default
+      default: []
+  #
+  # Triggered State
+  - conditions:
+    - condition: trigger
+      id: panel_triggered
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: !input z2m_keypad_path_set
+          payload: "{\n \"arm_mode\": \n  {\n   \"mode\": \"in_alarm\"\n  }\n}"
+  # ------------------------------------------------------------------------------------------------
+  # From the keypad to the server
+  # ------------------------------------------------------------------------------------------------
+  # Handle incoming message from the keypad
+  - conditions:
+    - condition: trigger
+      id: keypad_mqtt
+    sequence:
+    # acknowledgement
+    #
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action_transaction != null }}'
+        sequence:
+        - service: mqtt.publish
+          data:
+            topic: !input z2m_keypad_path_set
+            payload: "{\n \"arm_mode\": \n  {\n    \"transaction\": \"{{ trigger.payload_json.action_transaction }}\",\n    \"mode\": \"{{ trigger.payload_json.action }}\"\n  }\n}"
+    #
+    # Actions to perform on the server
+    - choose:
+      # Arm away
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action == "arm_all_zones" }}'
+        sequence:
+        - service: alarm_control_panel.alarm_arm_away
+          target:
+            entity_id: !input control_panel
+          data:
+            code: "{{ trigger.payload_json.action_code }}"
+      # Arm home
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action == "arm_day_zones" }}'
+        sequence:
+        - service: alarm_control_panel.alarm_arm_home
+          target:
+            entity_id: !input control_panel
+          data:
+            code: "{{ trigger.payload_json.action_code }}"
+      # Arm night
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action == "arm_night_zones" }}'
+        sequence:
+        - service: alarm_control_panel.alarm_arm_night
+          target:
+            entity_id: !input control_panel
+          data:
+            code: "{{ trigger.payload_json.action_code }}"
+      # Panic
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action == "emergency" }}'
+        sequence:
+        - service: alarm_control_panel.alarm_trigger
+          target:
+            entity_id: !input control_panel
+      # Disarm
+      - conditions:
+        - condition: template
+          value_template: '{{ trigger.payload_json.action == "disarm" }}'
+        sequence:
+        - service: alarm_control_panel.alarm_disarm
+          target:
+            entity_id: !input control_panel
+          data:
+            code: "{{ trigger.payload_json.action_code }}"
+      # Default action
+      default: []
+  # ------------------------------------------------------------------------------------------------
+  # Default automation value
+  default: []
+mode: parallel
+max: 10
